@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recepção - Inicío | MesaPro</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/recepcionista.css">
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+</head>
+<body>
+    <header>
+        <div class="menubar">
+            <div>
+                <h1>Restaurante X</h1>
+            </div>
+            <nav>
+                <a id="mesa" href="#" onclick="paginaMesa()">Mesas</a>
+            </nav>
+            <div>
+                <span>Recepção</span>
+                <i class="fi fi-rr-circle-user"></i>
+            </div>
+        </div>
+    </header>
+    <main>
+        <!-- MESAS -->
+        <section id="pagina-mesa" class="card-container"> <!-- MESA LIVRE -->
+            <div id="mesa-1" class="card">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        Mesa 1
+                        <span class="ribbon available"></span>
+                    </h2>
+                    <p class="card-text">
+                        <i class="fi fi-rr-users"></i>
+                        <span class="card-itemtitle">Capacidade: </span><span id="capacity">4</span> pessoas
+                    </p>
+                </div>
+                <div class="card-buttons">
+                    <button class="card-btn primary" onclick="reservarMesa('mesa-4')" disabled>Ocupar</button>
+                    <button class="card-btn alternate" onclick="reservarMesa('mesa-1')">Reservar Mesa</button>
+                </div>
+            </div>
+
+            <div id="mesa-2" class="card"> <!-- MESA OCUPADA -->
+                <div class="card-body">
+                    <h2 class="card-title">
+                        Mesa 2
+                        <span class="ribbon occupied"></span>
+                    </h2>
+                    <p class="card-text">
+                        <i class="fi fi-rr-users"></i>
+                        <span class="card-itemtitle">Capacidade: </span><span id="capacity">4</span> pessoas
+                    </p>
+                </div>
+                <div class="card-buttons">
+                    <button class="card-btn primary" onclick="vercomandaMesa('mesa-2')" disabled>Ver Comanda</button>
+                    <button class="card-btn alternate" onclick="liberarMesa('mesa-2')" disabled>Liberar</button>
+                </div>
+            </div>
+
+            <div id="mesa-5" class="card"> <!-- MESA Reservada -->
+                <div class="card-body">
+                    <h2 class="card-title">
+                        Mesa 3
+                        <span class="ribbon reserved"></span>
+                    </h2>
+                    <p class="card-text">
+                        <i class="fi fi-rr-users"></i>
+                        <span class="card-itemtitle">Capacidade: </span><span id="capacity">4</span> pessoas
+                    </p>
+                    <p class="card-text">
+                        <i class="fi fi-rr-reservation-table"></i>
+                        <span class="card-itemtitle">Reservado: </span>
+                        <span class="cliente-reserva ">Marcus Aurelius</span>
+                    </p>
+                    <p class="card-text">
+                        <i class="fi fi-rr-calendar-clock"></i>
+                        <span class="card-itemtitle">Horário: </span>
+                        <span class="horario-reservado ">19:30 23/09/2024</span>
+                    </p>
+                </div>
+                <div class="card-buttons">
+                    <button class="card-btn primary" onclick="ocuparMesa('mesa-3')" disabled>Ocupar</button>
+                    <button class="card-btn alternate" onclick="removerreservaMesa('mesa-3')" disabled>Remover Reserva</button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+    <footer>
+        <div class="footer-info">
+            <p>&copy; 2025 Restaurante X. Todos os direitos reservados.</p>
+            <p><a href="#">Contato</a> | <a href="#">Sobre</a></p>
+        </div>
+    </footer>
+   <!-- <script src="/js/recepcionista/recepcionista.js"></script>
+    <script src="/js/recepcionista/script.js"></script>-->
+</body>
+</html>
