@@ -74,7 +74,7 @@ function liberarMesa(id) {
     // Habilita o botão ocupar
     mesa.querySelector(".card-buttons button:nth-child(1)").disabled = false;
 }
-
+/*
 document.getElementById("newForm").addEventListener("submit", function (event) {
     event.preventDefault(); // Evita recarregar a página
 
@@ -120,7 +120,7 @@ document.getElementById("newForm").addEventListener("submit", function (event) {
     }
 
     fecharModal();
-});
+});*/
 
 function atualizarBotaoMesa(mesa, texto, funcao, id) {
     let btn = mesa.querySelector(".card-buttons button:nth-child(2)");
@@ -140,3 +140,20 @@ function abrirModalReserva() {
 function fecharModal() {
     document.getElementById("modalOverlayReserva").style.display = "none";
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const menuButtonUser = document.querySelector('.menu-button-user');
+    const menuDropdownUser = document.querySelector('.menu-dropdown-user');
+
+    menuButtonUser.addEventListener('click', function() {
+        menuDropdownUser.classList.toggle('show');
+        menuButtonUser.setAttribute('aria-expanded', menuDropdownUser.classList.contains('show'));
+    });
+    
+    document.addEventListener('click', function(event) {
+        if (!menuButtonUser.contains(event.target) && !menuDropdownUser.contains(event.target)) {
+            menuDropdownUser.classList.remove('show');
+            menuButtonUser.setAttribute('aria-expanded', 'false');
+        }
+    });
+});

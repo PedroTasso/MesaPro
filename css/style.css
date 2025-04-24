@@ -88,6 +88,47 @@ header {
     background-color: #f0f0f0;
 }
 
+.menu-container-user {
+    display: block;
+    position: relative;
+}
+
+.menu-button-user {
+    background-color: transparent;
+    border: none;
+    color: var(--vermelho-pastel);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.menu-dropdown-user {
+    display: none;
+}
+
+.menu-dropdown-user.show {
+    display: block;
+}
+
+.menu-dropdown-user button {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: #333;
+    border: none;
+    position: absolute;
+    top: 100%;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    z-index: 10;
+    right: 1;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.menu-dropdown-user button:hover {
+    background-color: #f0f0f0;
+}
+
 .fi {
     font-size: 20px;
     vertical-align: middle;
@@ -146,6 +187,10 @@ main {
 
 .card-body {
     padding: 15px;
+}
+
+.card-header button {
+    margin-top: 10px;
 }
 
 .card-title {
@@ -266,8 +311,9 @@ input, select {
 
 .modal {
     background: white;
-    padding: 30px;
-    border-radius: 20px;
+    padding: 20px;
+    border-radius: 10px;
+    width: 320px;
 }
 
 .modal-header {
@@ -284,6 +330,11 @@ input, select {
 .form-group {
     display: flex;
     flex-direction: column;
+}
+
+.form-buttons {
+    display: flex;
+    justify-content: space-between;
 }
 
 .close-button {
@@ -322,6 +373,10 @@ footer {
 
 @media (max-width: 768px) {
     nav {
+        display: none;
+    }
+    
+    .user {
         display: none;
     }
 

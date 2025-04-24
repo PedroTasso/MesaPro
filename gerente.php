@@ -2,13 +2,12 @@
 //inicializa sessão
 session_start();
 
-
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: index.php"); // Redireciona para a página de login se não estiver logado
     exit;
 }
 
-if ($_SESSION["role"] !== 1) {
+if ($_SESSION["funcao"] !== 3) {
     // Se não for gerente, redireciona ou exibe uma mensagem de acesso negado
     // Exemplo de redirecionamento:
     header("location: denied.php");
@@ -24,7 +23,7 @@ require_once "config.php";
 $user = "";
 
 // Prepara e executa a consulta para obter o nome do gerente
-$sql = "SELECT fullname FROM users WHERE id = ?";
+$sql = "SELECT nome FROM employees WHERE id = ?";
 if ($stmt = mysqli_prepare($link, $sql)) {
     // Bind variables to the prepared statement as parameters
     mysqli_stmt_bind_param($stmt, "i", $param_id);
@@ -61,6 +60,10 @@ if ($stmt = mysqli_prepare($link, $sql)) {
     mysqli_stmt_close($stmt);
 }
 
+/************************************************************************
+ * MESAS
+ ************************************************************************/
+
 // Processamento para adicionar uma nova mesa
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['adicionar_mesa'])) {
     $numero_mesa = mysqli_real_escape_string($link, $_POST['numero_mesa']);
@@ -96,6 +99,103 @@ if ($result) {
 } else {
     echo "Erro ao buscar mesas: " . mysqli_error($link);
 }
+/************************************************************************
+ * PRODUTOS
+ ************************************************************************/
+
+// Adicionar
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['adicionar_produto'])) {
+    $nome = mysqli_real_escape_string($link, $_POST['productName']);
+    $tipo = mysqli_real_escape_string($link, $_POST['productType']);
+    $categoria = mysqli_real_escape_string($link, $_POST['productCategory']);
+    $preco = mysqli_real_escape_string($link, $_POST['productPrice']);
+
+    // Verifica se os campos estão preenchidos
+    if (!empty($nome) && !empty($tipo) && !empty($categoria) && !empty($preco)) {
+        $sql = "INSERT INTO produtos (nome, tipo_id, categoria_id, preco) VALUES (?, ?, ?, ?)";
+        if ($stmt = mysqli_prepare($link, $sql)) {
+            mysqli_stmt_bind_param($stmt, "siid", $nome, $tipo, $categoria, $preco);
+            if (mysqli_stmt_execute($stmt)) {
+                header("Location: gerente.php");
+            } else {
+                echo "<script>alert('Erro ao adicionar produto: " . mysqli_error($link) . "');</script>";
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            echo "Erro na preparação da query: " . mysqli_error($link);
+        }
+    } else {
+        echo "<script>alert('Preencha todos os campos obrigatórios!');</script>";
+    }
+}
+
+// Consulta para obter todos os produtos do banco de dados
+$sql_select = "
+    SELECT 
+        p.id, 
+        p.nome, 
+        p.preco, 
+        t.nome AS tipo, 
+        c.nome AS categoria
+    FROM produtos p
+    JOIN tipos_produto t ON p.tipo_id = t.id
+    JOIN categorias_produto c ON p.categoria_id = c.id
+    ORDER BY p.nome
+";
+$result = mysqli_query($link, $sql_select);
+$produtos = [];
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $produtos[] = $row;
+    }
+    mysqli_free_result($result);
+} else {
+    echo "Erro ao buscar produtos: " . mysqli_error($link);
+}
+/************************************************************************
+ * FUNCIONÁRIOS
+ ************************************************************************/
+
+// Adicionar
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['adicionar_funcionario'])) {
+    $nome = mysqli_real_escape_string($link, $_POST['employeeName']);
+    $cpf = mysqli_real_escape_string($link, $_POST['employeeCpf']);
+    $telefone = mysqli_real_escape_string($link, $_POST['employeeTel']);
+    $email = mysqli_real_escape_string($link, $_POST['employeeEmail']);
+    $senha = password_hash(mysqli_real_escape_string($link, $_POST['employeePassword']), PASSWORD_DEFAULT);
+    $funcao = mysqli_real_escape_string($link, $_POST['employeePosition']);
+
+    // Verifica se os campos estão preenchidos
+    if (!empty($nome) && !empty($cpf) && !empty($telefone) && !empty($email) && !empty($senha) && !empty($funcao)) {
+        $sql = "INSERT INTO employees (nome, cpf, telefone, email, senha, funcao) VALUES (?, ?, ?, ?, ?, ?)";
+        if ($stmt = mysqli_prepare($link, $sql)) {
+            mysqli_stmt_bind_param($stmt, "sssssi", $nome, $cpf, $telefone, $email, $senha, $funcao);
+            if (mysqli_stmt_execute($stmt)) {
+                header("Location: gerente.php");
+            } else {
+                echo "Erro ao adicionar funcionario: " . mysqli_error($link);
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            echo "Erro na preparação da query: " . mysqli_error($link);
+        }
+    } else {
+        echo "<script>alert('Preencha todos os campos obrigatórios!');</script>";
+    }
+}
+
+// Consulta para obter todos os funcionarios do banco de dados
+$sql_select = "SELECT id, nome, cpf, telefone, email, senha, funcao FROM employees ORDER BY nome";
+$result = mysqli_query($link, $sql_select);
+$funcionarios = [];
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $funcionarios[] = $row;
+    }
+    mysqli_free_result($result);
+} else {
+    echo "Erro ao buscar funcionarios: " . mysqli_error($link);
+}
 
 // Close connection
 mysqli_close($link);
@@ -112,6 +212,9 @@ mysqli_close($link);
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
 
     <script>
+        /************************************************************************
+         * MESAS
+         ************************************************************************/
         function excluirMesaPhp(mesaId, mesaNr) {
             if (confirm("Tem certeza que deseja excluir a mesa " + mesaNr + "?")) {
                 const mesa_id = mesaId.replace('mesa-', ''); // Extrai o ID numérico
@@ -135,12 +238,21 @@ mysqli_close($link);
             }
         }
 
-        function abrirModalEditarMesa(id, numero, capacidade) {
-            document.getElementById('tableId').value = id;
-            document.getElementById('tableNumber').value = numero;
-            document.getElementById('tableCapacity').value = capacidade;
+        function abrirModalEditarMesa(id) {
+            fetch(`buscar_mesa.php?id=${id}`) 
+                .then(response => response.json())
+                .then(data => {
+                    // Preenche os campos do formulário
+                    document.getElementById('tableId').value = data.id;
+                    document.getElementById('tableNumber').value = data.numero;
+                    document.getElementById('tableCapacity').value = data.capacidade;
 
-            document.getElementById('modalOverlayMesa').style.display = 'flex';
+                    // Exibe o modal
+                    document.getElementById('modalOverlayMesa').style.display = 'flex';
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar mesa:', error);
+                });
         }
 
         function fecharModal() {
@@ -171,27 +283,198 @@ mysqli_close($link);
                 console.error('Erro ao editar mesa:', error);
             });
         }
+
+        /************************************************************************
+         * PRODUTOS
+         ************************************************************************/
+        function abrirModalEditarProduto(id) {
+            fetch(`buscar_produto.php?id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Preenche os campos do formulário
+                    document.getElementById('productId').value = data.id;
+                    document.getElementById('productName').value = data.nome;
+                    document.getElementById('productType').value = data.tipo_id;
+                    document.getElementById('productCategory').value = data.categoria_id;
+                    document.getElementById('productPrice').value = data.preco;
+
+                    // Define o comportamento de envio do formulário
+                    document.getElementById('ProductForm').onsubmit = function(event) {
+                        salvarEdicaoProduto(event);
+                    };
+
+                    // Exibe o modal
+                    document.getElementById('modalOverlayCardapio').style.display = 'flex';
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar produto:', error);
+                });
+        }
+
+        function salvarEdicaoProduto(event) {
+            event.preventDefault(); // evita o recarregamento da página
+
+            const id = document.getElementById('productId').value;
+            const nome = document.getElementById('productName').value;
+            const tipo_id = document.getElementById('productType').value;
+            const categoria_id = document.getElementById('productCategory').value;
+            const preco = document.getElementById('productPrice').value;
+
+            fetch('editar_produto.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}&nome=${nome}&tipo_id=${tipo_id}&categoria_id=${categoria_id}&preco=${preco}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data); // opcional: mostrar resposta do servidor
+                fecharModal(); // fecha o modal
+                window.location.reload(); // recarrega a página para mostrar a atualização
+            })
+            .catch(error => {
+                console.error('Erro ao editar produto:', error);
+            });
+        }
+
+        function excluirProdutoPhp(id, nome) {
+            if (confirm("Tem certeza que deseja excluir o produto " + nome + "?")) {
+                fetch('excluir_produto.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'id=' + id,
+                })
+                .then(response => response.text())
+                .then(data => {
+                    window.location.reload();
+                })
+                .catch((error) => {
+                    console.error('Erro:', error);
+                });
+            }
+        }
+
+        /************************************************************************
+         * FUNCIONÁRIOS
+         ************************************************************************/
+
+        function abrirModalEditarFuncionario(id) {
+            fetch(`buscar_funcionario.php?id=${id}`) 
+                .then(response => response.json())
+                .then(data => {
+                    // Preenche os campos do formulário
+                    document.getElementById('employeeId').value = data.id;
+                    document.getElementById('employeeName').value = data.nome;
+                    document.getElementById('employeeCpf').value = data.cpf;
+                    document.getElementById('employeeTel').value = data.telefone;
+                    document.getElementById('employeeEmail').value = data.email;
+                    document.getElementById('employeePosition').value = data.funcao;
+
+                    // Define o comportamento de envio do formulário
+                    document.getElementById('EmployeeForm').onsubmit = function(event) {
+                        salvarEdicaoFuncionario(event);
+                    };
+                    
+                    document.getElementById('employeeCpf').disabled = true;
+
+                    // Exibe o modal
+                    document.getElementById('modalOverlayFuncionario').style.display = 'flex';
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar funcionário:', error);
+                });
+        }
+
+        function salvarEdicaoFuncionario(event) {
+            event.preventDefault(); // evita o recarregamento da página
+
+            const id = document.getElementById('employeeId').value;
+            const nome = document.getElementById('employeeName').value;
+            //const cpf = document.getElementById('employeeCpf').value;
+            const telefone = document.getElementById('employeeTel').value;
+            const email = document.getElementById('employeeEmail').value;
+            const password = document.getElementById('employeePassword').value;
+            const funcao = document.getElementById('employeePosition').value;
+
+            fetch('editar_funcionario.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}&nome=${nome}&telefone=${telefone}&email=${email}&password=${password}&funcao=${funcao}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                //console.log(data); // opcional: mostrar resposta do servidor
+                fecharModal(); // fecha o modal
+                window.location.reload(); // recarrega a página para mostrar a atualização
+            })
+            .catch(error => {
+                console.error('Erro ao editar funcionario:', error);
+            });
+        }
+
+        function excluirFuncionarioPhp(id, nome, cpf) {
+            if (confirm("Tem certeza que deseja excluir o funcionario " + nome + " com CPF: " + cpf + "?")) {
+                fetch('excluir_funcionario.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'id=' + id,
+                })
+                .then(response => response.text())
+                .then(data => {
+                    window.location.reload();
+                })
+                .catch((error) => {
+                    console.error('Erro:', error);
+                });
+            }
+        }
     </script>
 
 </head>
 <body>
     <header>
         <div class="menubar">
+            <div class="menu-container">
+                <button class="menu-button" aria-haspopup="true" aria-expanded="false"><i class="fi fi-rr-menu-burger"></i></button>
+                <div class="menu-dropdown" aria-label="Menu dropdown">
+                    <a id="mesa" href="#" onclick="paginaMesa()">Mesas</a>
+                    <a id="cardapio" href="#" onclick="paginaCardapio()">Produtos</a>
+                    <a id="funcionarios" href="#" onclick="paginaFuncionario()">Funcionários</a>
+                </div>
+            </div>
             <div>
                 <h1>Restaurante X</h1>
             </div>
             <nav>
                 <a id="mesa" href="#" onclick="paginaMesa()">Mesas</a>
-                <a id="cardapio" href="#" onclick="paginaCardapio()">Cardápio</a>
+                <a id="cardapio" href="#" onclick="paginaCardapio()">Produtos</a>
                 <a id="funcionarios" href="#" onclick="paginaFuncionario()">Funcionários</a>
             </nav>
-            <div>
+            <div class="menu-container-user">
+                <button class="menu-button-user" aria-haspopup="true" aria-expanded="false">
+                    <span class="user">Bem-vindo, <?php echo $user; ?>!</span>
+                    <i class="fi fi-rr-circle-user"></i>
+                </button>
+                <div class="menu-dropdown-user" aria-label="Menu dropdown">
+                    <form action="logout.php" method="post">
+                        <button type="submit">Logout</button>
+                    </form>
+                </div>
+            </div>
+            <!--<div>
                 <span>Bem-vindo, <?php echo $user; ?>!</span>
                 <i class="fi fi-rr-circle-user"></i>
                 <form action="logout.php" method="post">
                     <button type="submit">Logout</button>
                 </form>
-            </div>
+            </div>-->
         </div>
     </header>
     <main>
@@ -200,27 +483,116 @@ mysqli_close($link);
         <!-- MESAS -->
     <section id="pagina-mesa" class="card-container">
 
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title">Adicionar Nova Mesa</h2>
+                <form method="post">
+                    <div class="form-group">
+                        <label for="numero_mesa">Número da Mesa:</label>
+                        <input type="number" id="numero_mesa" name="numero_mesa" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="capacidade">Capacidade:</label>
+                        <input type="number" id="capacidade" name="capacidade" min="1" required>
+                    </div>
+                    <button class="card-btn primary" type="submit" name="adicionar_mesa">Adicionar Mesa</button>
+                </form>
+            </div>
+        </div>
+    
+        <!--<div id="add-table" class="card">
+            <div class="card-button-add">
+                <div class="container-mesas">
+                    <div class="add-mesa-form">
+                        <h2>Adicionar Nova Mesa</h2>
+                        <form method="post">
+                            <div style="width:100%;display:flex; flex-direction:right; justify-content:space-between; margin:10px 0;">
+                                <label for="numero_mesa">Número da Mesa:</label>
+                                <input style="float:right; vertical-align:baseline"" class="input-cad-mesa" type="number" id="numero_mesa" name="numero_mesa" required>
+                            </div>
+                            
+                            <div style="width:100%;display:flex; flex-direction:right; justify-content:space-between; margin:10px 0">
+                                <label for="capacidade">Capacidade:</label>
+                                <input style="float:right;" class="input-cad-mesa" type="number" id="capacidade" name="capacidade" min="1" required>
+                            </div>
+                            
+                            <button class="card-btn primary" type="submit" name="adicionar_mesa">Adicionar Mesa</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>-->
 
     <?php if (empty($mesas)): ?>
         <p>Nenhuma mesa cadastrada.</p>
     <?php else: ?>
         <?php foreach ($mesas as $mesa): ?>
+            <?php
+                // Mapeando o status para as classes CSS
+                $statusClass = '';
+                switch ($mesa['status']) {
+                    case 0:
+                        $statusClass = 'available';
+                        break;
+                    case 1:
+                        $statusClass = 'reserved';
+                        break;
+                    case 2:
+                        $statusClass = 'occupied';
+                        break;
+                    default:
+                        $statusClass = 'unknown'; 
+                }
+            ?>
             <div id="mesa-<?php echo $mesa['id']; ?>" class="card">
                 <div class="card-body">
                     <h2 class="card-title">
                         Mesa <?php echo htmlspecialchars($mesa['numero']); ?>
-                        <span class="ribbon <?php echo htmlspecialchars($mesa['status']); ?>">
-                            <?php echo ucfirst(htmlspecialchars($mesa['status'])); ?>
-                        </span>
+                        <span class="ribbon <?php echo $statusClass; ?>"></span>
                     </h2>
                     <p class="card-text">
                         <i class="fi fi-rr-users"></i>
                         <span class="card-itemtitle">Capacidade: </span><?php echo htmlspecialchars($mesa['capacidade']); ?> pessoas
                     </p>
+                    <?php if($mesa['status'] == 1): ?>
+                        <p class="card-text">
+                            <i class="fi fi-rr-reservation-table"></i>
+                            <span class="card-itemtitle">Reservado: </span>
+                            <span class="cliente-reserva"><?php echo $mesa['reservado_por']; ?></span>
+                        </p>
+                        <p class="card-text">
+                            <i class="fi fi-rr-circle-phone"></i>
+                            <span class="card-itemtitle">Telefone: </span>
+                            <span class="cliente-telefone"><?php echo $mesa['tel_reseva']; ?></span>
+                        </p>
+                        <?php 
+                            $horaReserva = strtotime($mesa['hora_reserva']);
+                            $dataFormatada = date('d/m/Y', $horaReserva);
+                            $horaFormatada = date('H:i', $horaReserva);
+                        ?>
+                        <p class="card-text">
+                            <i class="fi fi-rr-calendar-clock"></i>
+                            <span class="card-itemtitle">Horário: </span>
+                            <span class="horario-reservado"><?php echo $dataFormatada . ' às ' . $horaFormatada; ?></span>
+                        </p>
+                    <?php elseif($mesa['status'] == 2): ?>
+                        <p class="card-text">
+                            <i class="fi fi-rr-utensils"></i>
+                            <span class="card-itemtitle">Pedido: </span>
+                            <span class="order-status">Não registrado</span>
+                        </p>
+                    <?php endif; ?>
                 </div>
                 <div class="card-buttons">
-                    <button class="card-btn primary" onclick="abrirModalEditarMesa(<?php echo $mesa['id']; ?>, <?php echo $mesa['numero']; ?>, <?php echo $mesa['capacidade']; ?>)">Editar</button>
-                    <button class="card-btn alternate" onclick="excluirMesaPhp('mesa-<?php echo $mesa['id']; ?>', '<?php echo htmlspecialchars($mesa['numero']); ?>')">Excluir</button>
+                    <?php if($mesa['status'] == 1 || $mesa['status'] == 2): ?> <!-- status = reserved ou occupied -->
+                        <button class="card-btn primary" onclick="abrirModalEditarMesa(<?php echo $mesa['id']; ?>)" disabled>Editar</button>
+                        <button class="card-btn alternate" onclick="excluirMesaPhp('mesa-<?php echo $mesa['id']; ?>', '<?php echo htmlspecialchars($mesa['numero']); ?>')" disabled>Excluir</button>
+
+                    <?php else: ?> <!-- status = available -->
+                        <button class="card-btn primary" onclick="abrirModalEditarMesa(<?php echo $mesa['id']; ?>)">Editar</button>
+                        <button class="card-btn alternate" onclick="excluirMesaPhp('mesa-<?php echo $mesa['id']; ?>', '<?php echo htmlspecialchars($mesa['numero']); ?>')">Excluir</button>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -364,34 +736,7 @@ mysqli_close($link);
                 </div>
             </div>
     </div> -->
-    <!--
-            <div id="add-table" class="card">
-                <div class="card-button-add">
-                <button class="card-btn primary" onclick="adicionarMesa()">Adicionar</button>
-            </div> -->
 
-            <div id="add-table" class="card">
-                <div class="card-button-add">
-                    <div class="container-mesas">
-                        <div class="add-mesa-form">
-                            <h2>Adicionar Nova Mesa</h2>
-                            <form method="post">
-                                <div style="width:100%;display:flex; flex-direction:right; justify-content:space-between; margin:10px 0;">
-                                    <label for="numero_mesa">Número da Mesa:</label>
-                                    <input style="float:right; vertical-align:baseline"" class="input-cad-mesa" type="number" id="numero_mesa" name="numero_mesa" required>
-                                </div>
-                                
-                                <div style="width:100%;display:flex; flex-direction:right; justify-content:space-between; margin:10px 0">
-                                    <label for="capacidade">Capacidade:</label>
-                                    <input style="float:right;" class="input-cad-mesa" type="number" id="capacidade" name="capacidade" min="1" required>
-                                </div>
-                                
-                                <button class="card-btn primary" type="submit" name="adicionar_mesa">Adicionar Mesa</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <div class="modal-overlay" id="modalOverlayMesa">
                 <div class="modal">
@@ -414,20 +759,21 @@ mysqli_close($link);
                                 <label for="tableCapacity">Capacidade</label>
                                 <input type="number" name="tableCapacity" id="tableCapacity" min="0">
                             </div>
-                            <button type="submit" class="card-btn primary">Salvar</button>
+                            <div class="form-buttons">
+                                <button type="submit" class="card-btn primary">Salvar</button>
+                            </div>
                         </form>
                     </div>
                 </div>
             </div>
-            
         </section>
 
         <!-- CARDAPIO -->
          <section id="pagina-cardapio" class="container-cardapio">
             <div class="content-card">
                 <div class="card-header">
-                    <h1><i class="fi fi-rr-newspaper-open"></i> Cardápio</h1>
-                    <button class="btn-new  primary"><i class="fi fi-rr-plus-small"></i> Novo Produto</button>
+                    <h1><i class="fi fi-rr-hamburger-soda"></i> Produtos</h1>
+                    <button class="btn-new  primary" onclick="cadastrarProduto()"><i class="fi fi-rr-plus-small"></i> Novo Produto</button>
                 </div>
 
                 <div class="search-container">
@@ -441,7 +787,7 @@ mysqli_close($link);
                     </div>
                 </div>
 
-                <table>
+                <table id="productTable">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -453,6 +799,31 @@ mysqli_close($link);
                         </tr>
                     </thead>
                     <tbody>
+                    <?php if (empty($produtos)): ?>
+                            <tr>
+                                <td>Nenhum produto cadastrado!</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($produtos as $produto): ?>
+                                
+                                <tr>
+                                    <td><?php echo $produto['id']; ?></td>
+                                    <td><?php echo $produto['nome']; ?></td>
+                                    <td><?php echo $produto['tipo']; ?></td>
+                                    <td><?php echo $produto['categoria']; ?></td>
+                                    <td><?php echo $produto['preco']; ?></td>
+                                    <td>
+                                        <button class="btn-action" onclick="abrirModalEditarProduto(<?php echo $produto['id']; ?>)"><i class="fi fi-rr-pencil"></i></button>
+                                        <button class="btn-action" onclick="excluirProdutoPhp('<?php echo $produto['id']; ?>', '<?php echo $produto['nome']; ?>')"><i class="fi fi-rr-trash"></i></button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        <!--
                         <tr>
                             <td>001</td>
                             <td>Cheeseburger Clássico</td>
@@ -552,8 +923,64 @@ mysqli_close($link);
                                 <button class="btn-action"><i class="fi fi-rr-trash"></i></button>
                             </td>
                         </tr>
+                        -->
                     </tbody>
                 </table>
+
+                <div class="modal-overlay" id="modalOverlayCardapio">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h2><i class="fi fi-rr-hamburger-soda"></i> Produto</h2>
+                            <button class="close-button" onclick="fecharModal()"><i class="fi fi-rr-cross"></i></button>
+                        </div>
+                        <div class="modal-content">
+                            <form id="ProductForm" method="post">
+                            <input type="hidden" name="productId" id="productId">
+                                <div class="form-group">
+                                    <label for="productName">Nome</label>
+                                    <input type="text" name="productName" id="productName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="productType">Tipo</label>
+                                    <select name="productType" id="productType" >
+                                        <option value="1">Menu Principal</option>
+                                        <option value="2">Menu Infantil</option>
+                                        <option value="3">Bebidas Não Alcoólicas</option>
+                                        <option value="4">Bebidas Alcoólicas</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="productCategory">Categoria</label>
+                                    <select name="productCategory" id="productCategory" >
+                                        <option value="1">Aperitivos</option>
+                                        <option value="2">Carnes</option>
+                                        <option value="3">Massas</option>
+                                        <option value="4">Frango</option>
+                                        <option value="5">Peixe</option>
+                                        <option value="6">Burgers</option>
+                                        <option value="7">Saladas</option>
+                                        <option value="8">Sopas</option>
+                                        <option value="9">Vegetariano</option>
+                                        <option value="10">Sobremesa</option>
+                                        <option value="11">Sucos</option>
+                                        <option value="12">Águas</option>
+                                        <option value="13">Chopps</option>
+                                        <option value="14">Cerveja</option>
+                                        <option value="15">Destilados</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="productPrice">Preço (R$)</label>
+                                    <input type="number" name="productPrice" id="productPrice" step="0.01" min="0.01">
+                                </div>
+                                <div class="form-buttons">
+                                    <button type="submit" class="card-btn primary" name="adicionar_produto">Salvar</button>
+                                    <button class="card-btn alternate" type="reset">Limpar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
          </section>
 
@@ -562,7 +989,7 @@ mysqli_close($link);
             <div class="content-card">
                 <div class="card-header">
                     <h1><i class="fi fi-rr-users-alt"></i> Funcionários</h1>
-                    <button class="btn-new  primary"><i class="fi fi-rr-plus-small"></i> Novo Funcionário</button>
+                    <button class="btn-new  primary" onclick="cadastrarFuncionario()"><i class="fi fi-rr-plus-small"></i> Novo Funcionário</button>
                 </div>
 
                 <div class="search-container">
@@ -576,7 +1003,7 @@ mysqli_close($link);
                     </div>
                 </div>
 
-                <table>
+                <table id="employeeTable">
                     <thead>
                         <tr>
                             <th>Nome</th>
@@ -587,6 +1014,48 @@ mysqli_close($link);
                         </tr>
                     </thead>
                     <tbody>
+                        <?php if (empty($funcionarios)): ?>
+                            <tr>
+                                <td>Nenhum funcionario cadastrado!</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($funcionarios as $funcionario): ?>
+                                <?php
+                                    $funcao = '';
+                                    switch ($funcionario['funcao']) {
+                                        case 1:
+                                            $funcao = 'Garçom';
+                                            break;
+                                        case 2:
+                                            $funcao = 'Recepcionista';
+                                            break;
+                                        case 3:
+                                            $funcao = 'Gerente';
+                                            break;
+                                        case 4:
+                                            $funcao = 'Cozinheiro (a)';
+                                            break;
+                                        default:
+                                            $funcao = 'unknown'; 
+                                    }
+                                ?>
+                                <tr>
+                                    <td><?php echo $funcionario['nome']; ?></td>
+                                    <td><?php echo $funcionario['cpf']; ?></td>
+                                    <td><?php echo $funcionario['telefone']; ?></td>
+                                    <td><?php echo $funcao; ?></td>
+                                    <td>
+                                        <button class="btn-action" onclick="abrirModalEditarFuncionario(<?php echo $funcionario['id']; ?>)"><i class="fi fi-rr-pencil"></i></button>
+                                        <button class="btn-action" onclick="excluirFuncionarioPhp('<?php echo $funcionario['id']; ?>', '<?php echo $funcionario['nome']; ?>', '<?php echo $funcionario['cpf']; ?>')"><i class="fi fi-rr-trash"></i></button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        <!--
                         <tr>
                             <td>Stella Fátima Valentina</td>
                             <td>094.256.847-82</td>
@@ -627,8 +1096,56 @@ mysqli_close($link);
                                 <button class="btn-action"><i class="fi fi-rr-trash"></i></button>
                             </td>
                         </tr>
+                        -->
                     </tbody>
                 </table>
+
+                <div class="modal-overlay" id="modalOverlayFuncionario">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h2><i class="fi fi-rr-users-alt"></i> Funcionário</h2>
+                            <button class="close-button" onclick="fecharModal()"><i class="fi fi-rr-cross"></i></button>
+                        </div>
+                        <div class="modal-content">
+                            <form id="EmployeeForm" method="post">
+                                <input type="hidden" name="employeeId" id="employeeId">
+                                <div class="form-group">
+                                    <label for="employeeName">Nome</label>
+                                    <input type="text" name="employeeName" id="employeeName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="employeeCpf">CPF</label>
+                                    <input type="text" name="employeeCpf" id="employeeCpf">
+                                </div>
+                                <div class="form-group">
+                                    <label for="employeeTel">Telefone</label>
+                                    <input type="tel" name="employeeTel" id="employeeTel">
+                                </div>
+                                <div class="form-group">
+                                    <label for="employeeEmail">Email</label>
+                                    <input type="email" name="employeeEmail" id="employeeEmail">
+                                </div>
+                                <div class="form-group">
+                                    <label for="employeePassword">Senha de login</label>
+                                    <input type="password" name="employeePassword" id="employeePassword">
+                                </div>
+                                <div class="form-group">
+                                    <label for="employeePosition">Função</label>
+                                    <select name="employeePosition" id="employeePosition" >
+                                        <option value="1">Garçom</option>
+                                        <option value="2">Recepcionista</option>
+                                        <option value="3">Gerente</option>
+                                        <option value="4">Cozinheiro(a)</option>
+                                    </select>
+                                </div>
+                                <div class="form-buttons">
+                                    <button type="submit" class="card-btn primary" name="adicionar_funcionario">Salvar</button>
+                                    <button class="card-btn alternate" type="reset">Limpar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
          </section>
     </main>
@@ -639,5 +1156,6 @@ mysqli_close($link);
         </div>
     </footer>
     <script src="js/gerente.js"></script>
+    <script src="js/gerente/script.js"></script>
 </body>
 </html>

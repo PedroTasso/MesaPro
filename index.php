@@ -6,15 +6,15 @@ session_start();
 
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
     // Redireciona para a página apropriada com base no papel do usuário
-    switch ($_SESSION["role"]) {
+    switch ($_SESSION["funcao"]) {
         case 1:
-            header("location: gerente.php");
+            header("location: garcom.php");
             break;
         case 2:
             header("location: recepcionista.php");
             break;
         case 3:
-            header("location: garcom.php");
+            header("location: gerente.php");
             break;
         default:
             header("location: index.php"); // Redireciona para a página de login por padrão
@@ -29,63 +29,63 @@ require_once "config.php";
 // Processing form data when form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    // Check if username is empty
-    if (empty(trim($_POST["username"]))) {
-        $username_err = "Please enter username.";
+    // Check if email is empty
+    if (empty(trim($_POST["email"]))) {
+        $email_err = "Por favor, insira o e-mail.";
     } else {
-        $username = trim($_POST["username"]);
+        $email = trim($_POST["email"]);
     }
 
     // Check if password is empty
     if (empty(trim($_POST["password"]))) {
-        $password_err = "Please enter your password.";
+        $password_err = "Por favor, insira a senha.";
     } else {
         $password = trim($_POST["password"]);
     }
 
     // Validate credentials
-    if (empty($username_err) && empty($password_err)) {
+    if (empty($email_err) && empty($password_err)) {
         // Prepare a select statement
-        $sql = "SELECT id, username, password, role FROM users WHERE username = ?"; // Inclui a coluna "role" na consulta
+        $sql = "SELECT id, email, senha, funcao FROM employees WHERE email = ?";
 
         if ($stmt = mysqli_prepare($link, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "s", $param_username);
+            mysqli_stmt_bind_param($stmt, "s", $param_email);
 
             // Set parameters
-            $param_username = $username;
+            $param_email = $email;
 
             // Attempt to execute the prepared statement
             if (mysqli_stmt_execute($stmt)) {
                 // Store result
                 mysqli_stmt_store_result($stmt);
 
-                // Check if username exists, if yes then verify password
+                // Check if email exists, if yes then verify password
                 if (mysqli_stmt_num_rows($stmt) == 1) {
                     // Bind result variables
-                    mysqli_stmt_bind_result($stmt, $id, $username, $db_password, $role); // Inclui a variável $role
+                    mysqli_stmt_bind_result($stmt, $id, $db_email, $db_senha, $funcao);
                     if (mysqli_stmt_fetch($stmt)) {
                         //Verifica a senha diretamente.
-                        if ($password === $db_password) {
+                        if (password_verify($password, $db_senha)) {
                             // Password is correct, so start a new session
                             session_start();
 
                             // Store data in session variables
                             $_SESSION["loggedin"] = true;
                             $_SESSION["id"] = $id;
-                            $_SESSION["username"] = $username;
-                            $_SESSION["role"] = $role; // Armazena o papel do usuário na sessão
+                            $_SESSION["email"] = $db_email;
+                            $_SESSION["funcao"] = $funcao;
 
                             // Redirect user to the appropriate page based on role
-                            switch ($role) {
+                            switch ($funcao) {
                                 case 1:
-                                    header("location: gerente.php");
+                                    header("location: garcom.php");
                                     break;
                                 case 2:
                                     header("location: recepcionista.php");
                                     break;
                                 case 3:
-                                    header("location: garcom.php");
+                                    header("location: gerente.php");
                                     break;
                                 default:
                                     header("location: index.php"); // Redireciona para a página de login por padrão
@@ -94,15 +94,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             exit;
                         } else {
                             // Password is not valid, display a generic error message
-                            $login_err = "Invalid username or password.";
+                            $login_err = "E-mail ou senha inválidos.";
                         }
                     }
                 } else {
-                    // Username doesn't exist, display a generic error message
-                    $login_err = "Invalid username or password.";
+                    // email doesn't exist, display a generic error message
+                    $login_err = "E-mail ou senha inválidos.";
                 }
             } else {
-                echo "Oops! Something went wrong. Please try again later.";
+                echo "Oops! Algo deu errado. Tente novamente mais tarde.";
             }
 
             // Close statement
@@ -143,8 +143,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             ?>
             <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" id="loginForm">
-                <label for="user">Usuário:</label>
-                <input type="text" id="user" name="username" placeholder="Digite seu usuário" required>
+                <label for="user">E-mail:</label>
+                <input type="text" id="email" name="email" placeholder="Digite seu e-mail" required>
                 <label for="password">Senha:</label>
                 <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
                 <button type="submit">Entrar</button>

@@ -2,7 +2,7 @@
 
 define('DB_SERVER', 'localhost:3306');
 define('DB_USER', 'root');
-define('DB_PASS', '1234'); // Deixe em branco se não houver senha
+define('DB_PASS', ''); // Deixe em branco se não houver senha
 define('DB_NAME', 'mesapro');
 
 $link = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
@@ -22,7 +22,7 @@ if ($link === false) {
 }
 
 // Exemplo de uso (opcional - para testar a conexão)
-debug_to_console("Sucesso");
+//debug_to_console("Sucesso");
 
 
 ?>

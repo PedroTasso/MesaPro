@@ -127,6 +127,11 @@ tr:hover {
         grid-template-columns: 1fr;
     }
     
+    .card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
     table {
         display: block;
         overflow-x: auto;
