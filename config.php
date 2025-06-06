@@ -21,8 +21,4 @@ if ($link === false) {
     die("ERROR: Could not connect. " . mysqli_connect_error());
 }
 
-// Exemplo de uso (opcional - para testar a conexão)
-//debug_to_console("Sucesso");
-
-
 ?>

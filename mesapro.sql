@@ -102,6 +102,23 @@ INSERT INTO `produtos` (`id`, `nome`, `tipo_id`, `categoria_id`, `preco`) VALUES
 
 -- --------------------------------------------------------
 
+
+CREATE TABLE `comandapedidos` (
+  `id` int(11) NOT NULL,
+  `produto_id` INT(11) NOT NULL
+  `preco` decimal(10,2) NOT NULL,
+  `quantidade` INT(10) NOT NULL,
+  `info` varchar(100) NOT NULL,
+  FOREIGN KEY (`produto_id`) REFERENCES `produtos`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+- --------------------------------------------------------
+
+
+-- --------------------------------------------------------
+
+
+
 --
 -- Estrutura para tabela `tables`
 --
@@ -261,6 +278,11 @@ ALTER TABLE `users`
   MODIFY `id` tinyint(3) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+
+
+ALTER TABLE `comandapedidos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
 -- Restrições para tabelas despejadas
 --
 

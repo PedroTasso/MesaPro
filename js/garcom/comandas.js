@@ -1,312 +1,200 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Recupera o número da mesa da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const mesaNumero = urlParams.get('mesa') || localStorage.getItem('mesaSelecionada');
-    
-    if (!mesaNumero) {
-        window.location.href = 'garcom.php';
-        return;
-    }
+// Obtém referências aos elementos do DOM
+const modalcomanda = document.getElementById('modalcomanda');
+//const openBtn = document.getElementById('openModalBtn');
+const listaPedidos = document.getElementById('lista-pedidos');
+const totalElement = document.querySelector('.total');
+const urlParams = new URLSearchParams(window.location.search);
+// Aqui o parâmetro é "mesa" na URL, que representa o id da mesa
+const mesa_id = urlParams.get("mesa");
+let pedidos = [];
 
-    // Elementos do DOM
-    const numeroMesaSpan = document.getElementById('numero-mesa');
-    const modalNumeroMesa = document.getElementById('modal-numero-mesa');
-    const historicoList = document.getElementById('historico-list');
-    const itensAtuais = document.getElementById('itens-atuais');
-    const totalValor = document.getElementById('total-valor');
-    const adicionarItemForm = document.getElementById('adicionar-item-form');
-    const concluirBtn = document.getElementById('concluir-btn');
-    const finalizarMesaBtn = document.getElementById('finalizar-mesa-btn');
-
-    // Dados da comanda
-    let comandaAtual = {
-        mesa: mesaNumero,
-        itens: [],
-        historico: [],
-        total: 0
+let elemento = document.getElementById("openModalBnt");
+if (elemento) {
+    elemento.onclick = function() {
+        alert("Clicado!");
     };
+} else {
+    console.error("Elemento não encontrado!");
+}
 
-    // Cardápio
-    const cardapio = {
-        '1': { nome: 'Cheeseburger Clássico', preco: 29.90 },
-        '2': { nome: 'Filé Mignon Grelhado', preco: 59.90 },
-        '3': { nome: 'Lasanha à Bolonhesa', preco: 42.90 },
-        '4': { nome: 'Nuggets de Frango', preco: 19.90 },
-        '5': { nome: 'Mini Pizza de Queijo', preco: 22.90 },
-        '6': { nome: 'Água Mineral', preco: 9.90 },
-        '7': { nome: 'Chopp Artesanal', preco: 4.90 },
-        '8': { nome: 'Batata Frita', preco: 12.90 },
-        '9': { nome: 'Suco de Laranja Natural', preco: 14.40 }
-    };
-
-    // Inicialização
-    function init() {
-        numeroMesaSpan.textContent = mesaNumero;
-        modalNumeroMesa.textContent = mesaNumero;
-        
-        // Carrega dados salvos
-        const dadosSalvos = localStorage.getItem(`comanda_${mesaNumero}`);
-        if (dadosSalvos) {
-            comandaAtual = JSON.parse(dadosSalvos);
-        }
-        
-        atualizarHistorico();
-        atualizarItensAtuais();
-    }
-
-    // Atualiza o histórico de pedidos
-    function atualizarHistorico() {
-        historicoList.innerHTML = '';
-        
-        if (comandaAtual.historico.length === 0) {
-            historicoList.innerHTML = '<p>Nenhum pedido anterior</p>';
-            return;
-        }
-
-        comandaAtual.historico.forEach(pedido => {
-            const pedidoDiv = document.createElement('div');
-            pedidoDiv.className = 'pedido-historico';
-            
-            const data = new Date(pedido.timestamp);
-            const dataFormatada = data.toLocaleString('pt-BR');
-            
-            let itensHTML = pedido.itens.map(item => `
-                <div class="item-historico">
-                    <span>${item.quantidade}x ${item.nome}</span>
-                    <span>R$ ${item.subtotal.toFixed(2)}</span>
-                </div>
-            `).join('');
-            
-            pedidoDiv.innerHTML = `
-                <h4>${dataFormatada} - ${pedido.status === 'enviado' ? 'Enviado' : 'Finalizado'}</h4>
-                ${itensHTML}
-                <div class="total-pedido">Total: R$ ${pedido.total.toFixed(2)}</div>
-            `;
-            
-            historicoList.appendChild(pedidoDiv);
-        });
-    }
-
-    // Atualiza os itens atuais
-    function atualizarItensAtuais() {
-        itensAtuais.innerHTML = '';
-        comandaAtual.total = 0;
-        
-        if (comandaAtual.itens.length === 0) {
-            itensAtuais.innerHTML = '<p>Nenhum item adicionado</p>';
-            totalValor.textContent = '0,00';
-            return;
-        }
-
-        comandaAtual.itens.forEach((item, index) => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'item-atual';
-            
-            itemDiv.innerHTML = `
-                <div class="info-item">
-                    <span>${item.quantidade}x ${item.nome}</span>
-                    <span>R$ ${item.subtotal.toFixed(2)}</span>
-                </div>
-                ${item.observacoes ? `<div class="observacoes">${item.observacoes}</div>` : ''}
-                <button class="remover-item" data-index="${index}">
-                    <i class="fi fi-rr-trash"></i>
-                </button>
-            `;
-            
-            itensAtuais.appendChild(itemDiv);
-            comandaAtual.total += item.subtotal;
-        });
-        
-        totalValor.textContent = comandaAtual.total.toFixed(2);
-        salvarComanda();
-        
-        // Adiciona eventos aos botões de remover
-        document.querySelectorAll('.remover-item').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const index = parseInt(this.getAttribute('data-index'));
-                comandaAtual.itens.splice(index, 1);
-                atualizarItensAtuais();
-            });
-        });
-    }
-
-    // Salva a comanda no localStorage
-    function salvarComanda() {
-        localStorage.setItem(`comanda_${mesaNumero}`, JSON.stringify(comandaAtual));
-    }
-
-    // Evento para adicionar item
-    adicionarItemForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const itemId = document.getElementById('item-select').value;
-        const quantidade = parseInt(document.getElementById('quantidade').value);
-        const observacoes = document.getElementById('observacoes').value;
-        
-        if (!itemId || isNaN(quantidade) || quantidade < 1) return;
-        
-        const item = cardapio[itemId];
-        const novoItem = {
-            id: itemId,
-            nome: item.nome,
-            precoUnitario: item.preco,
-            quantidade: quantidade,
-            subtotal: item.preco * quantidade,
-            observacoes: observacoes,
-            timestamp: new Date().toISOString()
+document.addEventListener("DOMContentLoaded", function() {
+    let elemento = document.getElementById("openModalBnt");
+    if (elemento) {
+        elemento.onclick = function() {
+            alert("Clicado!");
         };
-        
-        comandaAtual.itens.push(novoItem);
-        adicionarItemForm.reset();
-        atualizarItensAtuais();
-    });
-
-    // Evento para enviar para cozinha
-    concluirBtn.addEventListener('click', function() {
-        if (comandaAtual.itens.length === 0) {
-            alert('Adicione itens antes de enviar!');
-            return;
-        }
-        
-        const novoPedido = {
-            timestamp: new Date().toISOString(),
-            itens: [...comandaAtual.itens],
-            total: comandaAtual.total,
-            status: 'enviado'
-        };
-        
-        comandaAtual.historico.push(novoPedido);
-        comandaAtual.itens = [];
-        comandaAtual.total = 0;
-        
-        salvarComanda();
-        atualizarHistorico();
-        atualizarItensAtuais();
-        
-        alert('Pedido enviado para cozinha!');
-    });
-
-    // Evento para fechar conta
-    finalizarMesaBtn.addEventListener('click', function() {
-        if (comandaAtual.itens.length > 0 && !confirm('Há itens não enviados para cozinha. Deseja fechar mesmo assim?')) {
-            return;
-        }
-        
-        // Preenche o modal
-        document.getElementById('resumo-pedidos').innerHTML = '';
-        
-        // Calcula o total geral
-        let totalGeral = comandaAtual.itens.reduce((sum, item) => sum + item.subtotal, 0);
-        totalGeral += comandaAtual.historico.reduce((sum, pedido) => sum + pedido.total, 0);
-        
-        document.getElementById('total-modal').textContent = `Total: R$ ${totalGeral.toFixed(2)}`;
-        
-        // Adiciona itens atuais ao resumo (se houver)
-        if (comandaAtual.itens.length > 0) {
-            const divItens = document.createElement('div');
-            divItens.innerHTML = '<h3>Itens não enviados:</h3>';
-            
-            comandaAtual.itens.forEach(item => {
-                divItens.innerHTML += `
-                    <div class="item-resumo">
-                        <span>${item.quantidade}x ${item.nome}</span>
-                        <span>R$ ${item.subtotal.toFixed(2)}</span>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('resumo-pedidos').appendChild(divItens);
-        }
-        
-        // Adiciona histórico ao resumo
-        if (comandaAtual.historico.length > 0) {
-            const divHistorico = document.createElement('div');
-            divHistorico.innerHTML = '<h3>Pedidos anteriores:</h3>';
-            
-            comandaAtual.historico.forEach(pedido => {
-                const data = new Date(pedido.timestamp);
-                divHistorico.innerHTML += `
-                    <div class="pedido-resumo">
-                        <h4>${data.toLocaleString('pt-BR')}</h4>
-                        ${pedido.itens.map(item => `
-                            <div class="item-resumo">
-                                <span>${item.quantidade}x ${item.nome}</span>
-                                <span>R$ ${item.subtotal.toFixed(2)}</span>
-                            </div>
-                        `).join('')}
-                        <div class="total-pedido">Subtotal: R$ ${pedido.total.toFixed(2)}</div>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('resumo-pedidos').appendChild(divHistorico);
-        }
-        
-        // Configura o modal de pagamento
-        document.getElementById('metodo-pagamento').addEventListener('change', function() {
-            const metodo = this.value;
-            const trocoContainer = document.getElementById('troco-container');
-            const valorContainer = document.getElementById('valor-recebido-container');
-            
-            if (metodo === 'dinheiro') {
-                trocoContainer.style.display = 'block';
-                valorContainer.style.display = 'block';
-                document.getElementById('valor-recebido').value = '';
-                document.getElementById('troco-valor').textContent = '0,00';
-            } else {
-                trocoContainer.style.display = 'none';
-                valorContainer.style.display = 'none';
-            }
-        });
-        
-        document.getElementById('valor-recebido').addEventListener('input', function() {
-            const total = parseFloat(document.getElementById('total-modal').textContent.replace(/[^\d.]/g, ''));
-            const recebido = parseFloat(this.value) || 0;
-            const troco = recebido - total;
-            document.getElementById('troco-valor').textContent = troco.toFixed(2);
-        });
-        
-        // Mostra o modal
-        document.getElementById('modal-fechamento').style.display = 'flex';
-    });
-
-    // Evento para confirmar pagamento
-    document.getElementById('confirmar-pagamento-btn').addEventListener('click', function() {
-        const metodoPagamento = document.getElementById('metodo-pagamento').value;
-        
-        if (metodoPagamento === 'dinheiro') {
-            const troco = parseFloat(document.getElementById('troco-valor').textContent);
-            if (troco < 0) {
-                alert('Valor recebido insuficiente!');
-                return;
-            }
-        }
-        
-        // Marca como pago
-        document.getElementById('mensagem-pago').style.display = 'block';
-        document.getElementById('confirmar-pagamento-btn').style.display = 'none';
-        document.getElementById('cancelar-fechamento-btn').style.display = 'none';
-        
-        // Limpa a comanda após 2 segundos
-        setTimeout(() => {
-            comandaAtual = {
-                mesa: mesaNumero,
-                itens: [],
-                historico: comandaAtual.historico,
-                total: 0
-            };
-            
-            salvarComanda();
-            document.getElementById('modal-fechamento').style.display = 'none';
-            window.location.href = 'garcom.php';
-        }, 2000);
-    });
-
-    // Evento para cancelar pagamento
-    document.getElementById('cancelar-fechamento-btn').addEventListener('click', function() {
-        document.getElementById('modal-fechamento').style.display = 'none';
-    });
-
-    // Inicializa a página
-    init();
+    }
 });
+
+
+
+// Função para abrir o modal de comanda
+openBtn.onclick = () => modalcomanda.style.display = 'flex';
+
+
+// Função para fechar o modal de comanda
+function fecharModalComanda() {
+  modalcomanda.style.display = 'none';
+}
+
+// Fecha o modal clicando fora da área (no fundo escuro)
+modalcomanda.onclick = function(event) {
+  if (event.target === modalcomanda) {
+    fecharModalComanda();
+  }
+};
+
+// Envio do formulário para adicionar um pedido
+document.getElementById('formRegistrar').onsubmit = function(e) {
+  e.preventDefault();
+
+  const produto_id = document.getElementById('produto').value;
+  const quantidade = document.getElementById('quantidade').value;
+  const info = document.getElementById('observacao').value;
+
+  // Envia os dados via POST usando o id da mesa (mesa_id)
+  fetch('add_comanda_pedido.php', {
+         method: 'POST',
+         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+         body: 'produto_id=' + encodeURIComponent(produto_id) +
+               '&quantidade=' + encodeURIComponent(quantidade) +
+               '&info=' + encodeURIComponent(info) +
+               '&mesa_id=' + encodeURIComponent(mesa_id)
+  })
+  .then(response => response.json())
+  .then(data => {
+         if (data.sucesso) {
+             alert('Pedido adicionado com sucesso!');
+             // Aqui você pode atualizar a tabela de pedidos se necessário.
+         } else {
+             alert('Erro ao adicionar pedido: ' + data.mensagem);
+         }
+  })
+  .catch(error => {
+         console.error('Erro:', error);
+         alert('Erro na requisição.');
+  });
+  
+  // Fecha o modal após enviar o pedido
+  fecharModalComanda();
+};
+
+// Função para atualizar a tabela de pedidos (caso necessário)
+function atualizarTabela() {
+  listaPedidos.innerHTML = "";
+  let totalFinal = 0;
+  pedidos.forEach(p => {
+    totalFinal += parseFloat(p.preco) * p.quantidade;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.nome}</td>
+      <td>${parseFloat(p.preco).toFixed(2)}</td>
+      <td>${p.quantidade}</td>
+      <td>${p.observacao ? "📝 " + p.observacao : ""}</td>
+    `;
+    listaPedidos.appendChild(tr);
+  });
+  totalElement.innerText = "Total: R$ " + totalFinal.toFixed(2);
+}
+
+// Função para finalizar o pedido
+function finalizarPedido() {
+  if (pedidos.length === 0) {
+    alert("⚠️ Nenhum pedido registrado para esta mesa.");
+    return;
+  }
+  
+  const formaPagamento = document.getElementById('pagamento').value;
+  
+  const dadosPedido = {
+    mesa_id: mesa_id,
+    itens: pedidos,
+    forma_pagamento: formaPagamento,
+    total: calcularTotal()
+  };
+  
+  fetch('/MesaPro/backend/finalizar_pedido.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(dadosPedido)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.sucesso) {
+      // Atualiza o status da mesa para disponível (0 = Disponível)
+      return fetch(`/MesaPro/backend/atualizar_status_mesa.php`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `id=${mesa_id}&status=0`
+      });
+    } else {
+      throw new Error(data.erro || 'Erro ao finalizar pedido');
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.sucesso) {
+      alert("✅ Pedido finalizado com sucesso! Mesa liberada.");
+      window.location.href = 'garcom.php';
+    } else {
+      throw new Error(data.erro || 'Erro ao atualizar status da mesa');
+    }
+  })
+  .catch(error => {
+    console.error('Erro:', error);
+    alert("❌ Ocorreu um erro ao finalizar o pedido: " + error.message);
+  });
+}
+
+// Função auxiliar para calcular o total do pedido
+function calcularTotal() {
+  return pedidos.reduce((total, item) => {
+    return total + (parseFloat(item.preco) * item.quantidade);
+  }, 0);
+}
+
+// Carrega os dados da mesa utilizando o id (mesa_id)
+if (mesa_id) {
+  fetch(`/MesaPro/backend/obter_mesa.php?mesa_id=${mesa_id}`)
+    .then(res => res.json())
+    .then(dados => {
+      // Atualiza o título com o número da mesa vindo do banco de dados
+      document.getElementById("titulo-mesa").textContent = `Mesa ${mesa_id}`;
+      // Exibe a capacidade conforme o valor do BD
+      document.getElementById("capacidade").textContent = dados.capacidade;
+      
+      // Para "Pedido", gera um número aleatório que é armazenado no localStorage (único por mesa)
+      let pedidoCount = localStorage.getItem("pedidoCount_" + mesa_id);
+      if (!pedidoCount) {
+         pedidoCount = Math.floor(Math.random() * 100) + 1;
+         localStorage.setItem("pedidoCount_" + mesa_id, pedidoCount);
+      }
+      document.getElementById("status-pedido").textContent = pedidoCount;
+      
+      // Define o tempo de espera fixo em 30 minutos
+      document.getElementById("tempo-espera").textContent = 30;
+    })
+    .catch(error => {
+      console.error("Erro ao carregar dados da mesa:", error);
+    });
+}
+
+// Carrega os produtos do banco de dados
+window.onload = () => {
+  fetch('/MesaPro/get_produtos.php')
+    .then(response => response.json())
+    .then(data => {
+      const select = document.getElementById('produto');
+      select.innerHTML = '<option value="">Selecione</option>';
+      data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = `${item.id}|${item.nome}|${item.preco}`;
+        option.textContent = item.nome;
+        select.appendChild(option);
+      });
+    })
+    .catch(error => {
+      console.error('Erro ao carregar produtos:', error);
+    });
+};
